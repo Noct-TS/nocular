@@ -1,5 +1,7 @@
 import * as util from '../util.ts';
 
+import HTTPError from '../errors/HTTPError.ts';
+
 import {
   HTTPMethod,
   NocularOptions,
@@ -10,6 +12,9 @@ import {
 class Nocular {
   baseURL?: string;
   defaultHeaders: Headers;
+  validateStatus: (status: number) => boolean;
+  transformRequest: ((data: any) => any)[];
+  transformResponse: ((data: any) => any)[];
 
   constructor(options?: NocularOptions) {
     this.baseURL = options?.baseURL;
@@ -18,13 +23,24 @@ class Nocular {
       new Headers({
         Accept: 'application/json, text/plain, */*',
       });
+    this.validateStatus = options?.validateStatus || this.validateStatusFunc;
+    this.transformRequest = options?.transformRequest || [
+      this.transformRequestFunc,
+    ];
+    this.transformResponse = options?.transformResponse || [
+      this.transformResponseFunc,
+    ];
   }
 
-  validateStatus(status: number) {
+  validateStatusFunc(status: number) {
     return status >= 200 && status < 300;
   }
 
-  transformResponse(data: any) {
+  transformRequestFunc(data: any) {
+    return data;
+  }
+
+  transformResponseFunc(data: any) {
     if (util.isString(data)) {
       try {
         data = JSON.parse(data);
@@ -34,12 +50,11 @@ class Nocular {
     return data;
   }
 
-  request<T = any>(
+  request(
     path: string,
     options: NocularRequestOptions
   ): Promise<NocularResponse> {
-    let validateStatus = options.validateStatus || this.validateStatus;
-    let transformResponse = options.transformResponse || this.transformResponse;
+    const validateStatus = options.validateStatus || this.validateStatus;
 
     let newHeaders: Headers = new Headers();
 
@@ -54,7 +69,7 @@ class Nocular {
     const requestOptions = {
       method: options.method,
       headers: newHeaders,
-      body: options.body,
+      body: options.data,
       mode: <RequestMode>options.mode,
       credentials: <RequestCredentials>options.credentials,
       cache: <RequestCache>options.cache,
@@ -66,25 +81,40 @@ class Nocular {
       signal: options.signal,
     };
 
-    return new Promise((resolve, reject) => {
-      fetch(this.buildURL(path, options.params), requestOptions)
-        .then((res: Response) => {
-          res.text().then((data) => {
-            let newData: any = transformResponse(data);
+    this.transformRequest.forEach((transform) => {
+      options.data = transform(options.data);
+    });
 
-            const newRes: NocularResponse<T> = {
+    return new Promise((resolve, reject) => {
+      fetch(this.buildURL(path, options.params), requestOptions).then(
+        (res: Response) => {
+          res.text().then((data) => {
+            this.transformResponse.forEach((transform) => {
+              data = transform(data);
+            });
+
+            const newRes: NocularResponse = {
               config: requestOptions,
               headers: res.headers,
               redirected: res.redirected,
               status: res.status,
               statusText: res.statusText,
-              data: newData,
+              data: data,
             };
 
-            resolve(newRes);
+            if (!validateStatus(res.status)) {
+              reject(
+                new HTTPError(
+                  `The request failed with status ${res.status}.`,
+                  newRes
+                )
+              );
+            } else {
+              resolve(newRes);
+            }
           });
-        })
-        .catch((err) => {});
+        }
+      );
     });
   }
 
@@ -102,70 +132,70 @@ class Nocular {
     return url;
   }
 
-  get<T = any>(
+  get(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.GET,
       ...options,
     });
   }
-  post<T = any>(
+  post(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.GET,
       ...options,
     });
   }
 
-  patch<T = any>(
+  patch(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.PATCH,
       ...options,
     });
   }
 
-  put<T = any>(
+  put(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.PUT,
       ...options,
     });
   }
 
-  delete<T = any>(
+  delete(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.DELETE,
       ...options,
     });
   }
 
-  options<T = any>(
+  options(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.OPTIONS,
       ...options,
     });
   }
 
-  head<T = any>(
+  head(
     url: string,
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
-    return this.request<T>(url, {
+    return this.request(url, {
       method: HTTPMethod.HEAD,
       ...options,
     });

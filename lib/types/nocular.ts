@@ -1,12 +1,15 @@
 export interface NocularOptions {
-  baseURL: string;
-  defaultHeaders: Headers;
+  baseURL?: string;
+  defaultHeaders?: Headers;
+  validateStatus?: (status: number) => boolean;
+  transformRequest?: ((data: any) => any)[];
+  transformResponse?: ((data: any) => any)[];
 }
 
 export interface NocularRequestOptions {
   method: HTTPMethod;
   headers?: Headers;
-  body?: any;
+  data?: any;
   params?: Record<string, string | number>;
   mode?: HTTPMode;
   credentials?: HTTPCredentials;
@@ -18,7 +21,8 @@ export interface NocularRequestOptions {
   keepalive?: boolean;
   signal?: AbortSignal;
   validateStatus?: (status: number) => boolean;
-  transformResponse?: (data: any) => any;
+  transformRequest?: ((data: any) => any)[];
+  transformResponse?: ((data: any) => any)[];
 }
 
 export interface NocularResponse<T = any> {
