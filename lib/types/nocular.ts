@@ -57,13 +57,13 @@ export interface NocularResponseConfig {
 }
 
 export const HTTPMethod = {
-  GET: 'GET',
-  POST: 'POST',
-  PATCH: 'PATCH',
-  PUT: 'PUT',
-  DELETE: 'DELETE',
-  OPTIONS: 'OPTIONS',
-  HEAD: 'HEAD',
+  GET: 'get',
+  POST: 'post',
+  PATCH: 'patch',
+  PUT: 'put',
+  DELETE: 'delete',
+  OPTIONS: 'options',
+  HEAD: 'head',
 };
 export type HTTPMethod = typeof HTTPMethod[keyof typeof HTTPMethod];
 
