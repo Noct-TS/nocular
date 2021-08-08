@@ -52,6 +52,7 @@ class Nocular {
       headers.set('Content-Type', 'application/json');
       data = JSON.stringify(data);
     }
+
     return data;
   }
 
@@ -98,6 +99,10 @@ class Nocular {
       addHeaders(options.headers);
     }
 
+    transformRequests?.forEach((transform) => {
+      options.data = transform(options.data, newHeaders);
+    });
+
     const requestOptions = {
       method: options.method,
       headers: newHeaders,
@@ -112,10 +117,6 @@ class Nocular {
       keepalive: options.keepalive,
       signal: options.signal,
     };
-
-    transformRequests?.forEach((transform) => {
-      options.data = transform(options.data, newHeaders);
-    });
 
     const url = this.buildURL(path, options.params);
 

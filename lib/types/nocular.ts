@@ -1,7 +1,7 @@
 export interface NocularOptions {
   baseURL?: string;
   validateStatus?: (status: number) => boolean;
-  transformRequests?: ((data: any) => any)[];
+  transformRequests?: ((data: any, headers: Headers) => any)[];
   transformResponses?: ((data: any) => any)[];
 }
 
