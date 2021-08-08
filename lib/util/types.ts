@@ -1,7 +1,19 @@
-export const isObject = (data: any) => {
-  return data && typeof data === 'object';
+export const isObject = (obj: any) => {
+  return obj && typeof obj === 'object';
 };
 
-export const isString = (data: any) => {
-  return data && typeof data === 'string';
+export const isArray = (obj: any) => {
+  return obj && Array.isArray(obj);
+};
+
+export const isString = (obj: any) => {
+  return obj && typeof obj === 'string';
+};
+
+export const isNumber = (obj: any) => {
+  return obj && typeof obj === 'number';
+};
+
+export const isBoolean = (obj: any) => {
+  return obj && typeof obj === 'boolean';
 };

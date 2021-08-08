@@ -14,25 +14,30 @@ import {
 
 class Nocular {
   baseURL?: string;
-  defaultHeaders: NocularDefaultHeaders;
+  defaultHeaders: NocularDefaultHeaders = {
+    global: { Accept: 'application/json, text/plain, */*' },
+    get: {},
+    post: { 'Content-Type': 'application/json' },
+    patch: { 'Content-Type': 'application/json' },
+    put: { 'Content-Type': 'application/json' },
+    delete: {},
+    options: {},
+    head: {},
+  };
 
   validateStatus: (status: number) => boolean;
-  transformRequests: ExtendableArray<(data: any) => any> =
+  transformRequests: ExtendableArray<(data: any, headers: Headers) => any> =
     new ExtendableArray();
   transformResponses: ExtendableArray<(data: any) => any> =
     new ExtendableArray();
 
   constructor(options?: NocularOptions) {
     this.baseURL = options?.baseURL;
-    this.defaultHeaders = options?.defaultHeaders || {
-      GLOBAL: { Accept: 'application/json, text/plain, */*' },
-    };
-    this.validateStatus = options?.validateStatus || this.validateStatusFunc;
 
+    this.validateStatus = options?.validateStatus || this.validateStatusFunc;
     this.transformRequests.push(
       options?.transformRequests || this.transformRequestFunc
     );
-
     this.transformResponses.push(
       options?.transformResponses || this.transformResponseFunc
     );
@@ -42,7 +47,11 @@ class Nocular {
     return status >= 200 && status < 300;
   }
 
-  transformRequestFunc(data: any) {
+  transformRequestFunc(data: any, headers: Headers) {
+    if (types.isObject(data)) {
+      headers.set('Content-Type', 'application/json');
+      data = JSON.stringify(data);
+    }
     return data;
   }
 
@@ -78,8 +87,8 @@ class Nocular {
     };
 
     if (this.defaultHeaders) {
-      if (this.defaultHeaders.GLOBAL) {
-        addHeaders(this.defaultHeaders.GLOBAL);
+      if (this.defaultHeaders.global) {
+        addHeaders(this.defaultHeaders.global);
       }
       if (this.defaultHeaders[options.method]) {
         addHeaders(this.defaultHeaders[options.method]!);
@@ -93,19 +102,19 @@ class Nocular {
       method: options.method,
       headers: newHeaders,
       body: options.data,
-      mode: <RequestMode>options.mode,
-      credentials: <RequestCredentials>options.credentials,
-      cache: <RequestCache>options.cache,
-      redirect: <RequestRedirect>options.redirect,
+      mode: options.mode,
+      credentials: options.credentials,
+      cache: options.cache,
+      redirect: options.redirect,
       referrer: options.referrer,
-      referrerPolicy: <ReferrerPolicy>options.referrerPolicy,
+      referrerPolicy: options.referrerPolicy,
       integrity: options.integrity,
       keepalive: options.keepalive,
       signal: options.signal,
     };
 
     transformRequests?.forEach((transform) => {
-      options.data = transform(options.data);
+      options.data = transform(options.data, newHeaders);
     });
 
     const url = this.buildURL(path, options.params);
@@ -170,7 +179,7 @@ class Nocular {
     options?: Omit<NocularRequestOptions, 'method'>
   ): Promise<NocularResponse> {
     return this.request(url, {
-      method: HTTPMethod.GET,
+      method: HTTPMethod.POST,
       ...options,
     });
   }

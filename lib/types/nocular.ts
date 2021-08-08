@@ -1,6 +1,5 @@
 export interface NocularOptions {
   baseURL?: string;
-  defaultHeaders?: NocularDefaultHeaders;
   validateStatus?: (status: number) => boolean;
   transformRequests?: ((data: any) => any)[];
   transformResponses?: ((data: any) => any)[];
@@ -9,7 +8,7 @@ export interface NocularOptions {
 export type NocularDefaultHeaders = Partial<
   Record<HTTPMethod, Record<string, string>>
 > & {
-  GLOBAL?: Record<string, string>;
+  global?: Record<string, string>;
 };
 
 export interface NocularRequestOptions {
@@ -27,7 +26,7 @@ export interface NocularRequestOptions {
   keepalive?: boolean;
   signal?: AbortSignal;
   validateStatus?: (status: number) => boolean;
-  transformRequests?: ((data: any) => any)[];
+  transformRequests?: ((data: any, headers: Headers) => any)[];
   transformResponses?: ((data: any) => any)[];
 }
 
@@ -64,21 +63,21 @@ export const HTTPMethod = {
   DELETE: 'delete',
   OPTIONS: 'options',
   HEAD: 'head',
-};
+} as const;
 export type HTTPMethod = typeof HTTPMethod[keyof typeof HTTPMethod];
 
 export const HTTPMode = {
   CORS: 'cors',
   NO_CORS: 'no-cors',
   SAME_ORIGIN: 'same-origin',
-};
+} as const;
 export type HTTPMode = typeof HTTPMode[keyof typeof HTTPMode];
 
 export const HTTPCredentials = {
   OMIT: 'omit',
   SAME_ORIGIN: 'same-origin',
   INCLUDE: 'include',
-};
+} as const;
 export type HTTPCredentials =
   typeof HTTPCredentials[keyof typeof HTTPCredentials];
 
@@ -89,14 +88,14 @@ export const HTTPCache = {
   NO_CACHE: 'no-cache',
   FORCE_CACHE: 'force-cache',
   ONLY_IF_CACHED: 'only-if-cached',
-};
+} as const;
 export type HTTPCache = typeof HTTPCache[keyof typeof HTTPCache];
 
 export const HTTPRedirect = {
   FOLLOW: 'follow',
   ERROR: 'error',
   MANUAL: 'manual',
-};
+} as const;
 export type HTTPRedirect = typeof HTTPRedirect[keyof typeof HTTPRedirect];
 
 export const HTTPReferrerPolicy = {
@@ -108,6 +107,6 @@ export const HTTPReferrerPolicy = {
   ORIGIN_WHEN_CROSS_ORIGIN: 'origin-when-cross-origin',
   STRICT_ORIGIN_WHEN_CROSS_ORIGIN: 'strict-origin-when-cross-origin',
   UNSAFE_URL: 'unsafe-url',
-};
+} as const;
 export type HTTPReferrerPolicy =
   typeof HTTPReferrerPolicy[keyof typeof HTTPReferrerPolicy];
