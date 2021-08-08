@@ -1,14 +1,20 @@
 export interface NocularOptions {
   baseURL?: string;
-  defaultHeaders?: Headers;
+  defaultHeaders?: NocularDefaultHeaders;
   validateStatus?: (status: number) => boolean;
-  transformRequest?: ((data: any) => any)[];
-  transformResponse?: ((data: any) => any)[];
+  transformRequests?: ((data: any) => any)[];
+  transformResponses?: ((data: any) => any)[];
 }
+
+export type NocularDefaultHeaders = Partial<
+  Record<HTTPMethod, Record<string, string>>
+> & {
+  GLOBAL?: Record<string, string>;
+};
 
 export interface NocularRequestOptions {
   method: HTTPMethod;
-  headers?: Headers;
+  headers?: Record<string, string>;
   data?: any;
   params?: Record<string, string | number>;
   mode?: HTTPMode;
@@ -21,17 +27,33 @@ export interface NocularRequestOptions {
   keepalive?: boolean;
   signal?: AbortSignal;
   validateStatus?: (status: number) => boolean;
-  transformRequest?: ((data: any) => any)[];
-  transformResponse?: ((data: any) => any)[];
+  transformRequests?: ((data: any) => any)[];
+  transformResponses?: ((data: any) => any)[];
 }
 
 export interface NocularResponse<T = any> {
-  config: NocularRequestOptions;
+  url: string;
+  config: NocularResponseConfig;
   headers: Headers;
   redirected: boolean;
   status: number;
   statusText: string;
   data: T;
+}
+
+export interface NocularResponseConfig {
+  method: HTTPMethod;
+  headers?: Headers;
+  body?: any;
+  mode?: HTTPMode;
+  credentials?: HTTPCredentials;
+  cache?: HTTPCache;
+  redirect?: HTTPRedirect;
+  referrer?: string; // USVString
+  referrerPolicy?: HTTPReferrerPolicy;
+  integrity?: string; // Subsource Integrity
+  keepalive?: boolean;
+  signal?: AbortSignal;
 }
 
 export const HTTPMethod = {

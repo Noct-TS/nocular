@@ -1,9 +1,12 @@
-import * as util from '../util.ts';
+import * as types from '../util/types.ts';
+
+import ExtendableArray from './ExtendableArray.ts';
 
 import HTTPError from '../errors/HTTPError.ts';
 
 import {
   HTTPMethod,
+  NocularDefaultHeaders,
   NocularOptions,
   NocularRequestOptions,
   NocularResponse,
@@ -11,25 +14,28 @@ import {
 
 class Nocular {
   baseURL?: string;
-  defaultHeaders: Headers;
+  defaultHeaders: NocularDefaultHeaders;
+
   validateStatus: (status: number) => boolean;
-  transformRequest: ((data: any) => any)[];
-  transformResponse: ((data: any) => any)[];
+  transformRequests: ExtendableArray<(data: any) => any> =
+    new ExtendableArray();
+  transformResponses: ExtendableArray<(data: any) => any> =
+    new ExtendableArray();
 
   constructor(options?: NocularOptions) {
     this.baseURL = options?.baseURL;
-    this.defaultHeaders =
-      options?.defaultHeaders ||
-      new Headers({
-        Accept: 'application/json, text/plain, */*',
-      });
+    this.defaultHeaders = options?.defaultHeaders || {
+      GLOBAL: { Accept: 'application/json, text/plain, */*' },
+    };
     this.validateStatus = options?.validateStatus || this.validateStatusFunc;
-    this.transformRequest = options?.transformRequest || [
-      this.transformRequestFunc,
-    ];
-    this.transformResponse = options?.transformResponse || [
-      this.transformResponseFunc,
-    ];
+
+    this.transformRequests.push(
+      options?.transformRequests || this.transformRequestFunc
+    );
+
+    this.transformResponses.push(
+      options?.transformResponses || this.transformResponseFunc
+    );
   }
 
   validateStatusFunc(status: number) {
@@ -41,7 +47,7 @@ class Nocular {
   }
 
   transformResponseFunc(data: any) {
-    if (util.isString(data)) {
+    if (types.isString(data)) {
       try {
         data = JSON.parse(data);
       } catch {}
@@ -56,15 +62,32 @@ class Nocular {
   ): Promise<NocularResponse> {
     const validateStatus = options.validateStatus || this.validateStatus;
 
-    let newHeaders: Headers = new Headers();
+    const transformRequests = this.transformRequests.extend(
+      options.transformRequests
+    );
+    const transformResponses = this.transformResponses.extend(
+      options.transformResponses
+    );
 
-    options.headers?.forEach((v, k) => {
-      newHeaders.append(k, v);
-    });
+    const newHeaders: Headers = new Headers();
 
-    this.defaultHeaders?.forEach((v, k) => {
-      newHeaders.append(k, v);
-    });
+    const addHeaders = (headers: Record<string, string>) => {
+      for (const [k, v] of Object.entries(headers)) {
+        newHeaders.append(k, v);
+      }
+    };
+
+    if (this.defaultHeaders) {
+      if (this.defaultHeaders.GLOBAL) {
+        addHeaders(this.defaultHeaders.GLOBAL);
+      }
+      if (this.defaultHeaders[options.method]) {
+        addHeaders(this.defaultHeaders[options.method]!);
+      }
+    }
+    if (options.headers) {
+      addHeaders(options.headers);
+    }
 
     const requestOptions = {
       method: options.method,
@@ -81,40 +104,41 @@ class Nocular {
       signal: options.signal,
     };
 
-    this.transformRequest.forEach((transform) => {
+    transformRequests?.forEach((transform) => {
       options.data = transform(options.data);
     });
 
+    const url = this.buildURL(path, options.params);
+
     return new Promise((resolve, reject) => {
-      fetch(this.buildURL(path, options.params), requestOptions).then(
-        (res: Response) => {
-          res.text().then((data) => {
-            this.transformResponse.forEach((transform) => {
-              data = transform(data);
-            });
-
-            const newRes: NocularResponse = {
-              config: requestOptions,
-              headers: res.headers,
-              redirected: res.redirected,
-              status: res.status,
-              statusText: res.statusText,
-              data: data,
-            };
-
-            if (!validateStatus(res.status)) {
-              reject(
-                new HTTPError(
-                  `The request failed with status ${res.status}.`,
-                  newRes
-                )
-              );
-            } else {
-              resolve(newRes);
-            }
+      fetch(url, requestOptions).then((res: Response) => {
+        res.text().then((data) => {
+          transformResponses?.forEach((transform) => {
+            data = transform(data);
           });
-        }
-      );
+
+          const newRes: NocularResponse = {
+            url,
+            config: requestOptions,
+            headers: res.headers,
+            redirected: res.redirected,
+            status: res.status,
+            statusText: res.statusText,
+            data: data,
+          };
+
+          if (!validateStatus(res.status)) {
+            reject(
+              new HTTPError(
+                `The request failed with status ${res.status}.`,
+                newRes
+              )
+            );
+          } else {
+            resolve(newRes);
+          }
+        });
+      });
     });
   }
 
