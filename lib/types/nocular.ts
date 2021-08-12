@@ -5,17 +5,18 @@ export interface NocularOptions {
   transformResponses?: ((data: any) => any)[];
 }
 
-export type NocularDefaultHeaders = Partial<
-  Record<HTTPMethod, Record<string, string>>
+export type NocularDefaultHeaders = Record<
+  HTTPMethod,
+  Record<string, string>
 > & {
-  global?: Record<string, string>;
+  common: Record<string, string>;
 };
 
 export interface NocularRequestOptions {
   method: HTTPMethod;
   headers?: Record<string, string>;
   data?: any;
-  params?: Record<string, string | number>;
+  params?: Record<string, string | number | undefined>;
   mode?: HTTPMode;
   credentials?: HTTPCredentials;
   cache?: HTTPCache;

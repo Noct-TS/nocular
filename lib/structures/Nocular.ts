@@ -15,7 +15,7 @@ import {
 class Nocular {
   baseURL?: string;
   defaultHeaders: NocularDefaultHeaders = {
-    global: { Accept: 'application/json, text/plain, */*' },
+    common: { Accept: 'application/json, text/plain, */*' },
     get: {},
     post: { 'Content-Type': 'application/json' },
     patch: { 'Content-Type': 'application/json' },
@@ -48,12 +48,13 @@ class Nocular {
   }
 
   transformRequestFunc(data: any, headers: Headers) {
+    if (types.isFormData(data)) {
+      return data;
+    }
     if (types.isObject(data)) {
       headers.set('Content-Type', 'application/json');
-      data = JSON.stringify(data);
+      return JSON.stringify(data);
     }
-
-    return data;
   }
 
   transformResponseFunc(data: any) {
@@ -83,13 +84,13 @@ class Nocular {
 
     const addHeaders = (headers: Record<string, string>) => {
       for (const [k, v] of Object.entries(headers)) {
-        newHeaders.append(k, v);
+        v === '' ? newHeaders.delete(k) : newHeaders.set(k, v);
       }
     };
 
     if (this.defaultHeaders) {
-      if (this.defaultHeaders.global) {
-        addHeaders(this.defaultHeaders.global);
+      if (this.defaultHeaders.common) {
+        addHeaders(this.defaultHeaders.common);
       }
       if (this.defaultHeaders[options.method]) {
         addHeaders(this.defaultHeaders[options.method]!);
@@ -154,13 +155,19 @@ class Nocular {
 
   private buildURL(
     path: string,
-    params?: Record<string, string | number>
+    params?: Record<string, string | number | undefined>
   ): string {
     let url = this.baseURL ? this.baseURL + path : path;
 
+    url = encodeURI(url);
+
     if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (typeof v === 'undefined') delete params[k];
+      }
+
       // @ts-ignore
-      url += `?${new URLSearchParams(params)}`;
+      url += `?${new URLSearchParams(params).toString()}`;
     }
 
     return url;

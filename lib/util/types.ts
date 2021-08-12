@@ -17,3 +17,7 @@ export const isNumber = (obj: any) => {
 export const isBoolean = (obj: any) => {
   return obj && typeof obj === 'boolean';
 };
+
+export const isFormData = (obj: any) => {
+  return obj && obj instanceof FormData;
+};
